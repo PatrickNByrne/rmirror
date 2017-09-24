@@ -3,14 +3,15 @@
 [![license](https://img.shields.io/github/license/patricknbyrne/rmirror.svg)](https://github.com/PatrickNByrne/rmirror/blob/master/LICENSE)
 
 
-##### A simple bash script to leverage rsync and email
+##### A simple bash script to leverage cron, rsync, and email
 
 
 ## Requirements
 
 * Bash
 * rsync
-* mail & postfix | sendmail | exim | another MTA
+* mail
+* postfix | sendmail | exim | other MTA
 
 
 ## Installation
