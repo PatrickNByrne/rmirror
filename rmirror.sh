@@ -5,14 +5,14 @@
 # Author:     Patrick Byrne
 # Title:      rmirror
 # Description:
-#         A simple bash script to leverage rsync and email
+#         A simple bash script to leverage cron, rsync, and email
 # ------------------------------------------------------------------
 #    Todo:
 # ------------------------------------------------------------------
 
 # --- Variables ----------------------------------------------------
 
-version=0.1.0
+version=0.1.1
 
 email_addr="root@localhost"
 rsync_flags="-av --delete"
@@ -53,7 +53,7 @@ log()
     printf "%s\n" "$*"
   else
     log_date="$(date "+%m-%d-%Y %H:%M:%S -")"
-    printf "%s %s\n" "$log_date" "$*" >> $log_file
+    printf "%s %s\n" "$log_date" "$*" >> "$log_file"
   fi
 }
 
@@ -90,8 +90,8 @@ while [[ $# -gt 0 ]]; do
       rsync_flags="$value"
       shift
       ;;
-    -l | --logdir)
-      log_dir="$value"
+    -l | --logfile)
+      log_file="$value"
       shift
       ;;
     *)
@@ -106,12 +106,12 @@ done
 # --- Body ---------------------------------------------------------
 
 # Check the log dir exists and create it if required
-if [[ ! -d "$(dirname $log_file)" ]]; then
-  mkdir -p "$(dirname $log_file)"
+if [[ ! -d "$(dirname "$log_file")" ]]; then
+  mkdir -p "$(dirname "$log_file")"
 fi
 
 # Initialize the log file if we're not debugging
-[[ ! "$debug_flag" = "True" ]] && echo "$(date)" > $log_file
+[[ ! "$debug_flag" = "True" ]] && date > "$log_file"
 log "Starting backup"
 
 # Check for required arguments
@@ -125,16 +125,11 @@ fi
 
 # Check for required applications
 for app in rsync mail ; do
-  which "$app" > /dev/null 2>&1
-  # Use which's exit code to check if the program exists
-  if [[ "$?" != "0" ]]; then
-    log "Error: $app not found"
-    exit 1
-  else
-    log "Found $(which $app)"
-    # Create a new variable in all caps that contains the program's path
-    eval ${app^^}="$(which $app)"
-  fi
+  # Use command to check if the program exists
+  command -v "$app" > /dev/null 2>&1 || { log "Error: $app not found"; exit 1; }
+  log "Found $(command -v $app)"
+  # Create a new variable in all caps that contains the program's path
+  eval ${app^^}="$(command -v $app)"
 done
 
 # Create our rsync string
@@ -146,5 +141,5 @@ log "$($rsync_command)"
 
 # Email the log catching its output (stderr redirect required)
 log "sending email"
-log "$($MAIL -s "Backup Log - $(date)" "$email_addr" < $log_file 2>&1)"
+log "$($MAIL -s "Backup Log - $(date)" "$email_addr" < "$log_file" 2>&1)"
 
