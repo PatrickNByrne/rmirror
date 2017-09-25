@@ -12,10 +12,11 @@
 
 # --- Variables ----------------------------------------------------
 
-version=0.1.1
+version=1.0.0
 
 email_addr="root@localhost"
 rsync_flags="-av --delete"
+max_deletes="10"
 
 # Find the path to the script and set the log file
 # NOTE: This does NOT follow symlinks
@@ -31,18 +32,20 @@ version()
 usage() 
 {
     cat <<"STOP"
+
     Usage: rmirror.sh [OPTIONS] -s <source> -d <destination>
 
     OPTIONS
 
-      -h --help       Print this message
-      -V --version    Print Version 
-      -v --verbose    Output to stdout and stderr instead of log file
-      -e --email      E-mail Address [default: root@localhost]
-      -s --source     Source
-      -d --dest       Destination
-      -r --rflags     Rsync flags [default: -av --delete]
-      -l --logfile    Log file [default: <scriptdir>/log/rmirror.log]
+      -h --help         Print this message
+      -V --version      Print Version 
+      -v --verbose      Output to stdout and stderr instead of log file
+      -e --email        E-mail Address [default: root@localhost]
+      -s --source       Source
+      -d --dest         Destination
+      -r --rflags       Rsync flags [default: -av --delete]
+      -l --logfile      Log file [default: <scriptdir>/log/rmirror.log]
+      -m --max-deletes  The maximum number of deletes [default: 10]
 
 STOP
 }
@@ -56,6 +59,21 @@ log()
     printf "%s %s\n" "$log_date" "$*" >> "$log_file"
   fi
 }
+
+send_email()
+{
+  # Don't do anything if we're debugging
+  [[ "$debug_flag" = "True" ]] && return
+  # Email the log catching its output (stderr redirect required)
+  log "sending email"
+  mail_out="$($MAIL -s "Backup Log - $(date)" "$email_addr" < "$log_file" 2>&1)"
+  if [[ -z "$mail_out" ]]; then
+    log "Mail sent successfully"
+  else
+    log "$mail_out"
+  fi
+}
+
 
 # --- Options processing -------------------------------------------
 
@@ -94,6 +112,10 @@ while [[ $# -gt 0 ]]; do
       log_file="$value"
       shift
       ;;
+    -m | --max-deletes)
+      max_deletes="$value"
+      shift
+      ;;
     *)
       echo "Error: unknown parameter \"$param\""
       usage
@@ -117,9 +139,11 @@ log "Starting backup"
 # Check for required arguments
 if [[ -z "$src_dir" ]]; then
   log "Error: No Source"
+  usage
   exit 1
 elif [[ -z "$dest_dir" ]]; then
   log "Error: No Destination"
+  usage
   exit 1
 fi
 
@@ -127,19 +151,47 @@ fi
 for app in rsync mail ; do
   # Use command to check if the program exists
   command -v "$app" > /dev/null 2>&1 || { log "Error: $app not found"; exit 1; }
-  log "Found $(command -v $app)"
+  log "Locating $app - Found $(command -v $app)"
   # Create a new variable in all caps that contains the program's path
   eval ${app^^}="$(command -v $app)"
 done
 
-# Create our rsync string
+# Check if arguments are sane
+if [[ ! -e "$src_dir" ]]; then
+  log "Error: Source does not exist or is a relative path"
+  send_email
+  exit 1
+elif [[ ! -e "$dest_dir" ]]; then
+  log "Error: Destination does not exist or is a relative path"
+  send_email
+  exit 1
+elif [[ ! -w "$dest_dir" ]]; then
+  log "Error: Destination not writable"
+  send_email
+  exit 1
+fi
+
+# Create our rsync strings
+rsync_dry_command="$RSYNC --dry-run $rsync_flags $src_dir $dest_dir"
 rsync_command="$RSYNC $rsync_flags $src_dir $dest_dir"
-log "Running: $rsync_command"
+
+# Check the number of deletes and stop if its greater than some value
+log "Running: $rsync_dry_command"
+rsync_output="$($rsync_dry_command)"
+deleted_count="$(grep -ic "Deleting" <<< "$rsync_output")"
+if [[ "$deleted_count" -gt "$max_deletes" ]]; then
+  log "Error: Too many deletes to automatically process"
+  log "Increase the --max-deletes value or run"
+  log "${rsync_command}"
+  log "to proceed"
+  send_email
+  exit 1
+fi
 
 # Sync the mirror
+log "Running: $rsync_command"
 log "$($rsync_command)"
 
-# Email the log catching its output (stderr redirect required)
-log "sending email"
-log "$($MAIL -s "Backup Log - $(date)" "$email_addr" < "$log_file" 2>&1)"
+# Send our final email
+send_email
 
