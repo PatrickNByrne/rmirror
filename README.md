@@ -28,20 +28,22 @@ git clone https://github.com/PatrickNByrne/rmirror.git
 
     OPTIONS
 
-      -h --help       Print this message
-      -V --version    Print Version 
-      -v --verbose    Output to stdout and stderr instead of log file
-      -e --email      E-mail Address [default: root@localhost]
-      -s --source     Source
-      -d --dest       Destination
-      -r --rflags     Rsync flags [default: -av --delete]
-      -l --logfile    Log file [default: <scriptdir>/log/rmirror.log]
+      -h --help         Print this message
+      -V --version      Print Version 
+      -v --verbose      Output to stdout and stderr instead of log file
+      -e --email        E-mail Address [default: root@localhost]
+      -s --source       Source
+      -d --dest         Destination
+      -r --rflags       Rsync flags [default: -av --delete]
+      -l --logfile      Log file [default: <scriptdir>/log/rmirror.log]
+      -m --max-deletes  The maximum number of deletes [default: 10]
 ```
 
 
 ## History
 
 * V0.1.0 - Initial release
+* V1.0.0 - Initial production release
 
 
 ## License
