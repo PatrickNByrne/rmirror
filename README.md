@@ -37,6 +37,7 @@ git clone https://github.com/PatrickNByrne/rmirror.git
       -r --rflags       Rsync flags [default: -av --delete]
       -l --logfile      Log file [default: <scriptdir>/log/rmirror.log]
       -m --max-deletes  The maximum number of deletes [default: 10]
+      -x --exclude      Specify the exclude file. One file/dir per line 
 ```
 
 
@@ -44,7 +45,7 @@ git clone https://github.com/PatrickNByrne/rmirror.git
 
 * V0.1.0 - Initial release
 * V1.0.0 - Initial production release
-
+* V1.1.0 - Add exclude file option
 
 ## License
 

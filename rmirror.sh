@@ -12,11 +12,12 @@
 
 # --- Variables ----------------------------------------------------
 
-version=1.0.0
+version=1.1.0
 
 email_addr="root@localhost"
 rsync_flags="-av --delete"
 max_deletes="10"
+exclude_file=""
 
 # Find the path to the script and set the log file
 # NOTE: This does NOT follow symlinks
@@ -46,6 +47,7 @@ usage()
       -r --rflags       Rsync flags [default: -av --delete]
       -l --logfile      Log file [default: <scriptdir>/log/rmirror.log]
       -m --max-deletes  The maximum number of deletes [default: 10]
+      -x --exclude      Specify the exclude file. One file/dir per line
 
 STOP
 }
@@ -116,6 +118,10 @@ while [[ $# -gt 0 ]]; do
       max_deletes="$value"
       shift
       ;;
+    -x | --exclude)
+      exclude_file="$value"
+      shift
+      ;;
     *)
       echo "Error: unknown parameter \"$param\""
       usage
@@ -156,7 +162,7 @@ for app in rsync mail ; do
   eval ${app^^}="$(command -v $app)"
 done
 
-# Check if arguments are sane
+# Check if required arguments are sane
 if [[ ! -e "$src_dir" ]]; then
   log "Error: Source does not exist or is a relative path"
   send_email
@@ -171,9 +177,21 @@ elif [[ ! -w "$dest_dir" ]]; then
   exit 1
 fi
 
-# Create our rsync strings
-rsync_dry_command="$RSYNC --dry-run $rsync_flags $src_dir $dest_dir"
-rsync_command="$RSYNC $rsync_flags $src_dir $dest_dir"
+# Create the exclude string, if required
+if [[ -n "$exclude_file" ]]; then
+  # Verify that the file exists
+  if [[ ! -f "$exclude_file" ]]; then
+    log "Error: The exclude file is set but doesn't exist"
+    send_email
+    exit 1
+  fi
+  rsync_exclude="--exclude-from $exclude_file"
+fi
+
+# Create the rsync strings
+rsync_dry_command="$RSYNC --dry-run $rsync_flags $rsync_exclude \
+  $src_dir $dest_dir"
+rsync_command="$RSYNC $rsync_flags $rsync_exclude $src_dir $dest_dir"
 
 # Check the number of deletes and stop if its greater than some value
 log "Running: $rsync_dry_command"

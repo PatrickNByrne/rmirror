@@ -1,2 +1,5 @@
 # Ignore log files
 log/*
+
+# Ignore the exclude list
+exclude.list
