@@ -15,7 +15,7 @@
 version=1.1.0
 
 email_addr="root@localhost"
-rsync_flags="-av --delete"
+rsync_flags="-av --delete --no-perms --no-owner --no-group"
 max_deletes="10"
 exclude_file=""
 
